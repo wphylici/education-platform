@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = require("./routes/index");
-const auth = require("./middlewares/auth");
 
 const { PORT = 8080 } = process.env;
 
@@ -43,7 +42,7 @@ app.use(function (req, res, next) {
 
 app.use(router);
 
-mongoose.connect("mongodb://localhost:27017/diploma");
+mongoose.connect("mongodb://127.0.0.1/diploma");
 
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
