@@ -34,7 +34,7 @@ createUser = (req, res) => {
         console.log(err);
         throw err;
       })
-      .catch(next);
+      // .catch(next);
   });
 };
 
