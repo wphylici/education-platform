@@ -1,14 +1,18 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken"); // для создания токена
 const User = require("../models/user");
-// const {
-//   MESSAGE_ERROR_404,
-//   MESSAGE_ERROR_400,
-//   MESSAGE_ERROR_409,
-// } = require("../utils/constants");
+const {
+  MESSAGE_ERROR_404,
+  MESSAGE_ERROR_400,
+  MESSAGE_ERROR_409,
+} = require("../utils/constants");
+
+const NotFoundError = require("../errors/not-found-err");
+const BadRequestError = require("../errors/bad-request-err");
+const ConflictError = require("../errors/conflict-err");
 
 // регистрация
-createUser = (req, res) => {
+createUser = (req, res, next) => {
   const { name, surname, fathername, email, password, status, groups } =
     req.body;
 
@@ -27,14 +31,14 @@ createUser = (req, res) => {
       )
       .catch((err) => {
         if (err.message === "CastError" || err.message === "ValidationError") {
-          // throw new BadRequestError(MESSAGE_ERROR_400);
-        } else if (err.name === "MongoError" && err.code === 11000) {
-          // throw new ConflictError(MESSAGE_ERROR_409);
+          throw new BadRequestError(MESSAGE_ERROR_400);
+        } else if (err.code === 11000) {
+          throw new ConflictError(MESSAGE_ERROR_409);
         }
         console.log(err);
         throw err;
       })
-      // .catch(next);
+      .catch(next);
   });
 };
 
@@ -56,7 +60,7 @@ const login = (req, res, next) => {
     })
     .catch((err) => {
       res.status(401).send({ message: err.message });
-      // throw new BadRequestError(MESSAGE_ERROR_400);
+      throw new BadRequestError(MESSAGE_ERROR_400);
     })
     .catch(next);
 };
@@ -67,7 +71,7 @@ const returnCurrentUser = (req, res, next) => {
     .then((user) => {
       if (!user) {
         console.log("пользователь не найден");
-        // return next(new NotFoundError(MESSAGE_ERROR_404));
+        return next(new NotFoundError(MESSAGE_ERROR_404));
       }
       return res.send({
         name: user.name,
