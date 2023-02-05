@@ -71,8 +71,11 @@ const returnCurrentUser = (req, res, next) => {
       }
       return res.send({
         name: user.name,
+        surname: user.surname,
+        fathername: user.fathername,
         email: user.email,
         status: user.status,
+        groups: user.groups,
       });
     })
     .catch(next);
