@@ -1,6 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const router = require("./routes/index");
+const {BASE} = require("./utils/constants");
+const {errorHandler} = require("./middlewares/error-handler")
 
 const { PORT = 8080 } = process.env;
 
@@ -44,8 +46,9 @@ app.use(function (req, res, next) {
 // app.use(auth);
 
 app.use(router);
+app.use(errorHandler); // централизованный обработчик ошибок
 
-mongoose.connect("mongodb://127.0.0.1/diploma");
+mongoose.connect(BASE);
 
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);

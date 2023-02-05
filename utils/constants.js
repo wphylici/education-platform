@@ -1,4 +1,4 @@
-const BASE = "mongodb://localhost:27017/bitfilmsdb";
+const BASE = "mongodb://127.0.0.1/diploma";
 
 const MESSAGE_ERROR_401 = "Необходима авторизация";
 const MESSAGE_ERROR_404 = "Ресурс не найден";
