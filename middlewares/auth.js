@@ -23,7 +23,6 @@ module.exports = (req, res, next) => {
       // NODE_ENV === "production" ? JWT_SECRET : "some-secret-key"
     );
 
-    console.log(payload);
   } catch (err) {
     return res.status(401).send({ message: "Необходима авторизация" });
     // throw new UnauthorizedError(MESSAGE_ERROR_401);

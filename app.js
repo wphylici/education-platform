@@ -8,6 +8,9 @@ const app = express();
 
 const allowedCors = ["https://localhost:3001", "http://localhost:3001"];
 
+app.use(express.urlencoded({
+  extended: true
+}))
 app.use(express.json());
 
 // CORS
