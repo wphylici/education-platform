@@ -74,6 +74,7 @@ const returnCurrentUser = (req, res, next) => {
         return next(new NotFoundError(MESSAGE_ERROR_404));
       }
       return res.send({
+        id: user._id,
         name: user.name,
         surname: user.surname,
         fathername: user.fathername,
