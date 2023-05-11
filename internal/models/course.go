@@ -30,11 +30,10 @@ type CreateCourse struct {
 }
 
 type UpdateCourse struct {
-	ID   int    `form:"id" binding:"required"`
-	Name string `form:"name" binding:"required"`
+	Name string `form:"name"`
 	//Image       multipart.File `form:"image,omitempty" validate:"required"`
-	Category    string `form:"category" binding:"required"`
-	Description string `form:"description" binding:"required"`
+	Category    string `form:"category"`
+	Description string `form:"description"`
 }
 
 type CourseResponse struct {

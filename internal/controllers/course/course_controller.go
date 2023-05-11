@@ -19,12 +19,18 @@ import (
 	"time"
 )
 
+type URLParam string
+
 const (
-	coursesRout  = "/course"
-	chaptersRout = "/chapter"
-	articlesRout = "/article"
+	coursesRoute  = "/courses"
+	chaptersRoute = "/chapters"
+	articlesRoute = "/articles"
 
 	imagesDir = "./resources/images/"
+
+	courseParam  URLParam = "course_id"
+	chapterParam URLParam = "chapter_id"
+	articleParam URLParam = "article_id"
 )
 
 type Controller struct {
@@ -40,16 +46,16 @@ func NewController(DB *gorm.DB, authController *auth.Controller) *Controller {
 }
 
 func (c *Controller) Route(rg *gin.RouterGroup) {
-	coursesRouter := rg.Group(coursesRout)
+	coursesRouter := rg.Group(coursesRoute)
 
-	coursesRouter.POST("/create", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateCourse)
-	coursesRouter.GET("/get-course", c.authController.DeserializeUser(), c.GetCourse)
-	coursesRouter.GET("/get-courses", c.authController.DeserializeUser(), c.GetCourses)
-	coursesRouter.PATCH("/update", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateCourse)
-	coursesRouter.DELETE("/delete", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteCourse)
+	coursesRouter.POST(rg.BasePath(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateCourse)
+	coursesRouter.GET(courseParam.toURL(), c.authController.DeserializeUser(), c.GetCourse)
+	coursesRouter.GET(rg.BasePath(), c.authController.DeserializeUser(), c.GetCourses)
+	coursesRouter.PATCH(courseParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateCourse)
+	coursesRouter.DELETE(courseParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteCourse)
 	coursesRouter.StaticFS("/images", http.Dir("resources/images"))
 
-	c.chaptersRoute(coursesRouter)
+	c.chaptersRoute(coursesRouter.Group(courseParam.toURL()))
 }
 
 func (c *Controller) CreateCourse(ctx *gin.Context) {
@@ -130,55 +136,51 @@ func (c *Controller) GetCourse(ctx *gin.Context) {
 
 	var coursesResponse []models.CourseResponse
 
-	params := ctx.Request.URL.Query()
-	ids := params["id"]
+	courseID := ctx.Param(string(courseParam))
 
-	for _, id := range ids {
-
-		course := models.Course{}
-		res := c.DB.
-			Joins("Lecturer").
-			Joins("Image").
-			Preload("Chapters", func(db *gorm.DB) *gorm.DB {
-				return db.Order("Chapters.id").
-					Preload("Articles", func(db *gorm.DB) *gorm.DB {
-						return db.Order("Articles.id")
-					})
-			}).
-			First(&course, "Courses.id = ?", id)
-		if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
-			message := fmt.Sprintf("Course with id=%s not found", id)
-			ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusBadRequest,
-				Message:    message,
-			})
-			return
-		} else if res.Error != nil {
-			ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusBadRequest,
-				Message:    res.Error.Error(),
-			})
-			return
-		}
-
-		courseResponse := models.CourseResponse{
-			ID:          course.ID,
-			Name:        course.Name,
-			CreatorName: course.Lecturer.Name,
-			Image:       course.Image,
-			Category:    course.Category,
-			Description: course.Description,
-			Route:       utils.Latinizer(course.Name),
-
-			Chapters: course.Chapters,
-
-			CreatedAt: course.CreatedAt,
-			UpdatedAt: course.UpdatedAt,
-		}
-		coursesResponse = append(coursesResponse, courseResponse)
+	course := models.Course{}
+	res := c.DB.
+		Joins("Lecturer").
+		Joins("Image").
+		Preload("Chapters", func(db *gorm.DB) *gorm.DB {
+			return db.Order("Chapters.id").
+				Preload("Articles", func(db *gorm.DB) *gorm.DB {
+					return db.Order("Articles.id")
+				})
+		}).
+		First(&course, "Courses.id = ?", courseID)
+	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
+		message := fmt.Sprintf("Course with id=%s not found", courseID)
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    message,
+		})
+		return
+	} else if res.Error != nil {
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    res.Error.Error(),
+		})
+		return
 	}
+
+	courseResponse := models.CourseResponse{
+		ID:          course.ID,
+		Name:        course.Name,
+		CreatorName: course.Lecturer.Name,
+		Image:       course.Image,
+		Category:    course.Category,
+		Description: course.Description,
+		Route:       utils.Latinizer(course.Name),
+
+		Chapters: course.Chapters,
+
+		CreatedAt: course.CreatedAt,
+		UpdatedAt: course.UpdatedAt,
+	}
+	coursesResponse = append(coursesResponse, courseResponse)
 
 	ctx.JSON(http.StatusOK, models.HTTPResponse{
 		Status:     serv.SuccessResponseStatus,
@@ -245,13 +247,15 @@ func (c *Controller) UpdateCourse(ctx *gin.Context) {
 		return
 	}
 
+	courseID := ctx.Param(string(courseParam))
+
 	course := models.Course{}
 	res := c.DB.
 		Joins("Image").
 		Joins("Lecturer").
-		First(&course, "Courses.id = ?", payload.ID)
+		First(&course, "Courses.id = ?", courseID)
 	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
-		message := fmt.Sprintf("Course with id=%d not found", payload.ID)
+		message := fmt.Sprintf("Course with id=%s not found", courseID)
 		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
 			Status:     serv.ErrResponseStatus,
 			StatusCode: http.StatusBadRequest,
@@ -348,67 +352,63 @@ func (c *Controller) DeleteCourse(ctx *gin.Context) {
 
 	var coursesResponse []models.CourseResponse
 
-	params := ctx.Request.URL.Query()
-	ids := params["id"]
+	courseID := ctx.Param(string(courseParam))
 
-	for _, id := range ids {
-
-		course := models.Course{}
-		res := c.DB.
-			Preload("Chapters.Articles").
-			Joins("Lecturer").Joins("Image").
-			First(&course, "Courses.id = ?", id)
-		if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
-			message := fmt.Sprintf("Course with id=%s not found", id)
-			ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusBadRequest,
-				Message:    message,
-			})
-			return
-		} else if res.Error != nil {
-			ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusBadRequest,
-				Message:    res.Error.Error(),
-			})
-			return
-		}
-
-		currentUser := ctx.MustGet("currentUser").(models.User)
-		if currentUser.ID != course.CreatorID {
-			message := "Access denied"
-			ctx.JSON(http.StatusForbidden, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusForbidden,
-				Message:    message,
-			})
-			return
-		}
-
-		res = c.DB.Delete(&course.Image)
-		if res.Error != nil {
-			ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
-				Status:     serv.ErrResponseStatus,
-				StatusCode: http.StatusBadRequest,
-				Message:    res.Error.Error(),
-			})
-			return
-		}
-		deleteImage(course.Image.Path)
-
-		courseResponse := models.CourseResponse{
-			ID:          course.ID,
-			Name:        course.Name,
-			CreatorName: course.Lecturer.Name,
-			Image:       course.Image,
-			Category:    course.Category,
-			Description: course.Description,
-			Route:       utils.Latinizer(course.Name),
-			Chapters:    course.Chapters,
-		}
-		coursesResponse = append(coursesResponse, courseResponse)
+	course := models.Course{}
+	res := c.DB.
+		Preload("Chapters.Articles").
+		Joins("Lecturer").Joins("Image").
+		First(&course, "Courses.id = ?", courseID)
+	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
+		message := fmt.Sprintf("Course with id=%s not found", courseID)
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    message,
+		})
+		return
+	} else if res.Error != nil {
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    res.Error.Error(),
+		})
+		return
 	}
+
+	currentUser := ctx.MustGet("currentUser").(models.User)
+	if currentUser.ID != course.CreatorID {
+		message := "Access denied"
+		ctx.JSON(http.StatusForbidden, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusForbidden,
+			Message:    message,
+		})
+		return
+	}
+
+	res = c.DB.Delete(&course.Image)
+	if res.Error != nil {
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    res.Error.Error(),
+		})
+		return
+	}
+	deleteImage(course.Image.Path)
+
+	courseResponse := models.CourseResponse{
+		ID:          course.ID,
+		Name:        course.Name,
+		CreatorName: course.Lecturer.Name,
+		Image:       course.Image,
+		Category:    course.Category,
+		Description: course.Description,
+		Route:       utils.Latinizer(course.Name),
+		Chapters:    course.Chapters,
+	}
+	coursesResponse = append(coursesResponse, courseResponse)
 
 	ctx.JSON(http.StatusOK, models.HTTPResponse{
 		Status:     serv.SuccessResponseStatus,
@@ -428,7 +428,7 @@ func imageUpload(ctx *gin.Context) (imageName string, imagePath string, url stri
 	originalImageName := strings.TrimSuffix(filepath.Base(header.Filename), filepath.Ext(header.Filename))
 	now := time.Now()
 	imageName = strings.ReplaceAll(strings.ToLower(originalImageName), " ", "-") + "-" + fmt.Sprintf("%v", now.Unix()) + fileExt
-	url = path.Join(ctx.Request.Host, "/api", coursesRout, "/images", imageName)
+	url = path.Join(ctx.Request.Host, coursesRoute, "/images", imageName)
 
 	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
 		err := os.MkdirAll(imagesDir, os.ModePerm)
@@ -461,4 +461,16 @@ func deleteImage(path string) {
 		// TODO: интегрировать с логером Gin
 		log.Printf("[ERROR] File deletion error: %s", err.Error())
 	}
+}
+
+func (p URLParam) toURL() string {
+	b := make([]byte, 0, len(p)+2)
+	b = append(b, []byte(p)...)
+	b = append(b, ' ', ' ')
+
+	copy(b[2:], b)
+	b[0] = '/'
+	b[1] = ':'
+
+	return string(b)
 }

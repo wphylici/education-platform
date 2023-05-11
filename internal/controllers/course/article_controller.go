@@ -15,9 +15,9 @@ import (
 
 func (c *Controller) articlesRoute(rg *gin.RouterGroup) {
 
-	articlesRouter := rg.Group(articlesRout)
+	articlesRouter := rg.Group(articlesRoute)
 
-	articlesRouter.POST("/create", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateArticle)
+	articlesRouter.POST("/create/", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateArticle)
 	articlesRouter.PATCH("/update", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateArticle)
 	articlesRouter.DELETE("/delete", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteArticles)
 

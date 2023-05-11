@@ -13,13 +13,13 @@ import (
 
 func (c *Controller) chaptersRoute(rg *gin.RouterGroup) {
 
-	chaptersRouter := rg.Group(chaptersRout)
+	chaptersRouter := rg.Group(chaptersRoute)
 
 	chaptersRouter.POST("/create", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateChapter)
 	chaptersRouter.PATCH("/update", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateChapter)
 	chaptersRouter.DELETE("/delete", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteChapters)
 
-	c.articlesRoute(chaptersRouter)
+	c.articlesRoute(chaptersRouter.Group(chapterParam.toURL()))
 }
 
 func (c *Controller) CreateChapter(ctx *gin.Context) {

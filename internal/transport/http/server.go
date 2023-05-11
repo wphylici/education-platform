@@ -23,9 +23,9 @@ type Router interface {
 }
 
 type GinServer struct {
-	config       *Config
-	server       *http.Server
-	initialRoute *gin.RouterGroup
+	config *Config
+	server *http.Server
+	router *gin.Engine
 }
 
 func NewGinServer(config *Config) *GinServer {
@@ -51,9 +51,9 @@ func NewGinServer(config *Config) *GinServer {
 	}
 
 	return &GinServer{
-		config:       config,
-		server:       serv,
-		initialRoute: router.RouterGroup.Group("/api"),
+		config: config,
+		server: serv,
+		router: router,
 	}
 }
 
@@ -75,7 +75,7 @@ func (gs *GinServer) gracefulPowerOff() {
 }
 
 func (gs *GinServer) prepareHealthcheck() {
-	gs.initialRoute.GET("/healthcheck", func(ctx *gin.Context) {
+	gs.router.GET("/healthcheck", func(ctx *gin.Context) {
 		message := "Connected"
 		ctx.JSON(http.StatusOK, gin.H{"status": SuccessResponseStatus, "message": message})
 	})
@@ -106,6 +106,6 @@ func (gs *GinServer) StartGinServer() {
 
 func (gs *GinServer) StartAllRoutes(routers ...Router) {
 	for _, r := range routers {
-		r.Route(gs.initialRoute)
+		r.Route(gs.router.Group("/"))
 	}
 }
