@@ -15,13 +15,11 @@ type Chapter struct {
 }
 
 type CreateChapter struct {
-	Name     string `json:"name" binding:"required"`
-	CourseID int    `json:"courseID" binding:"required"`
+	Name string `json:"name" binding:"required"`
 }
 
 type UpdateChapter struct {
-	ID   int    `json:"id" binding:"required"`
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name"`
 }
 
 type ChapterResponse struct {

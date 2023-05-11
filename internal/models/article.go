@@ -17,18 +17,15 @@ type Article struct {
 }
 
 type CreateArticle struct {
-	Name      string `json:"name" binding:"required"`
-	ChapterID int    `json:"chapterID" binding:"required"`
-}
-
-type UpdateArticle struct {
-	ID   int    `json:"id" binding:"required"`
 	Name string `json:"name" binding:"required"`
 }
 
+type UpdateArticle struct {
+	Name string `json:"name"`
+}
+
 type UpdateContent struct {
-	ID      int    `json:"id" binding:"required"`
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content"`
 }
 
 type ArticleResponse struct {

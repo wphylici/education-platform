@@ -9,6 +9,7 @@ import (
 	"github.com/goldlilya1612/diploma-backend/internal/utils"
 	"gorm.io/gorm/clause"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,13 +17,14 @@ import (
 func (c *Controller) articlesRoute(rg *gin.RouterGroup) {
 
 	articlesRouter := rg.Group(articlesRoute)
+	const contentURL = "/content"
 
-	articlesRouter.POST("/create/", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateArticle)
-	articlesRouter.PATCH("/update", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateArticle)
-	articlesRouter.DELETE("/delete", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteArticles)
+	articlesRouter.POST("/", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.CreateArticle)
+	articlesRouter.PATCH(articleParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateArticle)
+	articlesRouter.DELETE(articleParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteArticles)
 
-	articlesRouter.PATCH("/update-content", c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateContent)
-	articlesRouter.GET("/get-content", c.authController.DeserializeUser(), c.GetContent)
+	articlesRouter.PATCH(articleParam.toURL()+contentURL, c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateContent)
+	articlesRouter.GET(articleParam.toURL()+contentURL, c.authController.DeserializeUser(), c.GetContent)
 
 }
 
@@ -39,12 +41,14 @@ func (c *Controller) CreateArticle(ctx *gin.Context) {
 		return
 	}
 
+	chapterID := ctx.Param(string(chapterParam))
+
 	var creatorID string
 	res := c.DB.
 		Table("courses").
 		Select("creator_id").
 		Joins("JOIN Chapters ON Chapters.course_id = Courses.id").
-		Where("Chapters.id = ?", payload.ChapterID).
+		Where("Chapters.id = ?", chapterID).
 		Scan(&creatorID)
 	if res.Error != nil {
 		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
@@ -67,9 +71,11 @@ func (c *Controller) CreateArticle(ctx *gin.Context) {
 	}
 
 	now := time.Time{}
+	chapterIDInt, _ := strconv.Atoi(chapterID)
+
 	newArticle := models.Article{
 		Name:      payload.Name,
-		ChapterID: payload.ChapterID,
+		ChapterID: chapterIDInt,
 
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -115,11 +121,21 @@ func (c *Controller) UpdateArticle(ctx *gin.Context) {
 		return
 	}
 
+	articleID := ctx.Param(string(articleParam))
+
 	article := models.Article{}
 	res := c.DB.
 		Preload("Chapter.Course").
-		First(&article, "Articles.id = ?", payload.ID)
-	if res.Error != nil {
+		First(&article, "Articles.id = ?", articleID)
+	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
+		message := fmt.Sprintf("Article with id=%s not found", articleID)
+		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
+			Status:     serv.ErrResponseStatus,
+			StatusCode: http.StatusBadRequest,
+			Message:    message,
+		})
+		return
+	} else if res.Error != nil {
 		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
 			Status:     serv.ErrResponseStatus,
 			StatusCode: http.StatusBadRequest,
@@ -238,12 +254,14 @@ func (c *Controller) UpdateContent(ctx *gin.Context) {
 		return
 	}
 
+	articleID := ctx.Param(string(articleParam))
+
 	article := models.Article{}
 	res := c.DB.
 		Preload("Chapter.Course").
-		First(&article, "Articles.id = ?", payload.ID)
+		First(&article, "Articles.id = ?", articleID)
 	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
-		message := fmt.Sprintf("Article with id=%d not found", payload.ID)
+		message := fmt.Sprintf("Article with id=%s not found", articleID)
 		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
 			Status:     serv.ErrResponseStatus,
 			StatusCode: http.StatusBadRequest,
@@ -295,12 +313,12 @@ func (c *Controller) UpdateContent(ctx *gin.Context) {
 
 func (c *Controller) GetContent(ctx *gin.Context) {
 
-	id := ctx.Request.URL.Query().Get("id")
+	articleID := ctx.Param(string(articleParam))
 
 	content := ""
-	res := c.DB.Table("articles").Select("content").Where("id=?", id).Scan(&content)
+	res := c.DB.Table("articles").Select("content").Where("id=?", articleID).Scan(&content)
 	if res.Error != nil && strings.Contains(res.Error.Error(), "record not found") {
-		message := fmt.Sprintf("Article with id=%s not found", id)
+		message := fmt.Sprintf("Article with id=%s not found", articleID)
 		ctx.JSON(http.StatusBadRequest, models.HTTPResponse{
 			Status:     serv.ErrResponseStatus,
 			StatusCode: http.StatusBadRequest,
