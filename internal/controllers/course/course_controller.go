@@ -22,11 +22,12 @@ import (
 type URLParam string
 
 const (
+	imagesRoute   = "/images"
 	coursesRoute  = "/courses"
 	chaptersRoute = "/chapters"
 	articlesRoute = "/articles"
 
-	imagesDir = "./resources/images/"
+	imagesDir = "resources/images/"
 
 	courseParam  URLParam = "course_id"
 	chapterParam URLParam = "chapter_id"
@@ -53,7 +54,7 @@ func (c *Controller) Route(rg *gin.RouterGroup) {
 	coursesRouter.GET(rg.BasePath(), c.authController.DeserializeUser(), c.GetCourses)
 	coursesRouter.PATCH(courseParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.UpdateCourse)
 	coursesRouter.DELETE(courseParam.toURL(), c.authController.DeserializeUser(), c.authController.CheckAccessRole(auth.LecturerRole), c.DeleteCourse)
-	coursesRouter.StaticFS("/images", http.Dir("resources/images"))
+	coursesRouter.StaticFS(imagesRoute, http.Dir(imagesDir))
 
 	c.chaptersRoute(coursesRouter.Group(courseParam.toURL()))
 }
@@ -417,7 +418,7 @@ func (c *Controller) DeleteCourse(ctx *gin.Context) {
 	})
 }
 
-func imageUpload(ctx *gin.Context) (imageName string, imagePath string, url string, err error) {
+func imageUpload(ctx *gin.Context) (imageName, imagePath, url string, err error) {
 
 	file, header, err := ctx.Request.FormFile("image")
 	if err != nil {
@@ -428,7 +429,7 @@ func imageUpload(ctx *gin.Context) (imageName string, imagePath string, url stri
 	originalImageName := strings.TrimSuffix(filepath.Base(header.Filename), filepath.Ext(header.Filename))
 	now := time.Now()
 	imageName = strings.ReplaceAll(strings.ToLower(originalImageName), " ", "-") + "-" + fmt.Sprintf("%v", now.Unix()) + fileExt
-	url = path.Join(ctx.Request.Host, coursesRoute, "/images", imageName)
+	url = path.Join(ctx.Request.Host, coursesRoute, imagesRoute, imageName)
 
 	if _, err := os.Stat(imagesDir); os.IsNotExist(err) {
 		err := os.MkdirAll(imagesDir, os.ModePerm)

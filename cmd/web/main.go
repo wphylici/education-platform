@@ -23,11 +23,6 @@ func main() {
 	flag.StringVar(&ginConfigName, "gin_conf_name", "default-gin-conf", "name Gin Server config file (without extension)")
 	flag.Parse()
 
-	//viper.OnConfigChange(func(e fsnotify.Event) {
-	//	fmt.Println("Config file changed:", e.Name)
-	//})
-	//viper.WatchConfig()
-
 	// init psql
 	dbConfig, err := database.NewConfigFromEnv(psqlConfigPath, psqlConfigName)
 	if err != nil {
